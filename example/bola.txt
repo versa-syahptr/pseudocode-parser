@@ -1,0 +1,48 @@
+program PertandinganBola
+{program untuk menyimpan data kemenangan 3 tim bola, dan menampilkan rata-rata kemenangan setiap timnya}
+kamus
+	const NMAX : integer = 256
+	type tabGol : array [0..NMAX] of integer
+	gol1,gol2,gol3 : tabGol
+	n1,n2,n3 : integer
+	r1,r2,r3 : real
+algoritma
+	inputData(gol1, n1)
+	inputData(gol2, n2)
+	inputData(gol3, n3)
+	
+	r1 <- rataan(gol1, n1)
+	r2 <- rataan(gol2, n2)
+	r3 <- rataan(gol3, n3)
+	
+	print(r1,r2,r3)
+endprogram
+
+procedure inputData(in/out gol:tabGol, N: integer)
+{I.S. data kemenangan suatu tim telah siap pada piranti masukan
+ F.S. t berisi N data kemenangan suatu tim.}
+kamus
+	temp : integer
+algoritma
+	N <- 0
+	input(temp)
+	while temp >= 0 do
+		gol[N] <- temp
+		N <- N + 1
+		input(temp)
+	endwhile
+endprocedure
+
+function rataan(t: tabGol, n : integer) -> real
+{diberikan array t yang berisi n data kemenangan, untuk mengembalikan rata-rata kemenangan}
+kamus
+	i, jumlah : integer
+	hasil : real
+algoritma
+	jumlah <- 0
+	for i <- 0 to n-1 do
+		jumlah <- jumlah + t[i]
+	endfor
+	hasil <- real(jumlah)/real(n)
+	return hasil
+endfunction

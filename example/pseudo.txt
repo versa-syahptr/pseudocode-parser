@@ -1,0 +1,65 @@
+program Contoh
+{demo penggunaan array mulai dari mengisi, mengurutkan dan menampilkannya}
+kamus
+    const MAX : int = 2021
+    type tabInt : array [0..MAX] of integer
+    daftar : tabInt
+    M : integer
+algoritma
+    input(M)
+    daftar <- isiArray(M)
+    print("sebelum diurutkan:")
+    cetakArray(daftar,M)
+    mengurutkan(M,daftar)
+    print("setelah diurutkan:")
+    cetakArray(daftar,M)
+endprogram
+
+function isiArray(N:integer) -> tabInt
+{Mengembalikan sebuah array yang berisi N bilangan yang berasal dari piranti masukan}
+kamus
+    tab : tabInt
+    k : integer
+algoritma
+    for k <- 0 to N-1 do
+        read(tab[k])
+    endfor
+    return tab
+endfunction
+
+procedure cetakArray(in B : tabInt, N : integer)
+{IS. terdefinisi array B yang berisi N bilangan bulat
+FS. menampilkan elemen array B ke piranti keluaran }
+kamus
+    k : integer
+algoritma
+    for k <- 0 to N-1 do
+        print(B[k])
+    endfor
+endprocedure
+
+procedure tukar(in a,b : integer, in/out T : tabInt)
+{IS. terdefinisi bilangan bulat a dan b yang merupakan indeks dari array T
+FS. elemen pada indeks ke-a dan ke-b pada array T saling bertukar}
+kamus
+    temp : integer
+algoritma
+    temp <- T[a]
+    T[a] <- T[b]
+    T[b] <- temp
+endprocedure
+
+procedure mengurutkan(in N : integer, in/out E : tabInt)
+{IS. terdefinisi array T yang berisi N bilangan bulat
+FS. array T terurut secara descending atau menurun dengan algoritma tertentu}
+kamus
+    i,j : integer
+algoritma
+    for i <- 1 to (N - 1) do
+        for j <- 1 to (N - 1 - i) do
+            if E[j-1] < E[j] then
+                tukar(j,j-1,E)
+            endif
+        endfor
+    endfor
+endprocedure

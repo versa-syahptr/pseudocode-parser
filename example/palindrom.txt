@@ -1,0 +1,49 @@
+program palindrom
+kamus
+    type arrString : array [0..256] of string
+    array1 : arrString
+    array2 : arrString
+
+algoritma
+isiArray(5, array1)
+print("palindrom?", isPalindrom(5, array1))
+endprogram
+
+procedure reverseArray(in MaxArray: integer, in/out T1,T2:arrString)
+{IS. terdefinisi array string T1
+ FS. array T2 memiliki element yang posisinya kebalikan dari array T1}
+kamus
+   k : integer
+algoritma
+   k <- 0
+   while k <= MaxArray-1 do
+       T2[k] <- T1[MaxArray-(k+1)]
+       k <- k + 1
+   endwhile
+endprocedure
+
+procedure isiArray(in N : integer, in/out arr : arrString)
+kamus
+	k : integer
+algoritma
+	for k <- 0 to N-1 do
+		input(arr[k])
+	endfor
+endprocedure
+
+function isPalindrom(N : integer, T1:arrString) -> boolean
+{fungsi untuk mengecek apakah array T1 bersifat polindrom atau tidak.
+masukan berupa integer N yang merupakan banyaknya elemen di dalam array T1.
+keluaran berupa boolean yang menyatakan array T1 palindrom atau tidak. }
+kamus
+	i : integer
+	T2 : arrString
+algoritma
+	reverseArray(N, T1, T2)
+	for i <- 0 to N-1 do
+		if T1[i] != T2[i] then
+			return false
+		endif
+	endfor
+	return true
+endfunction

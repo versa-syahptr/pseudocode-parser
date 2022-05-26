@@ -1,0 +1,14 @@
+program contohTipe
+kamus
+    type balok<
+       p,l,t   : integer
+       luas,volume : integer >
+    cube : balok
+
+algoritma
+    input(cube.p, cube.l, cube.t)
+    cube.volume <- cube.p * cube.l * cube.t
+    cube.luas <- 2 * (cube.p*cube.l + cube.p * cube.t + cube.l * cube.t)
+    print(cube.p, cube.l, cube.t, cube.luas, cube.volume)
+endprogram
+
