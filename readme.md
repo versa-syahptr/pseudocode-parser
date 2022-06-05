@@ -107,6 +107,10 @@ func main() {
 </tr>
 </table>
 
+## Known bugs
+1. invalid indirect of custom type in/out parameter `procedure baz(in/out s: Square)` where `Square` is a custom type
+2. bare array type unparsed in subprogram's parameter definition `function foo(arr: array [0..1] of integer`. <br>
+   **Solution:** give it alias `type bar : array [0..1] of integer` then `function foo(arr: bar)`.
 ## Notes
 
 > **algo2go.py** is an enhancement of **algo.py**. Where the implementation of **algo.py** is limited because it uses the 
