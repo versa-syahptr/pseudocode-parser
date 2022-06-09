@@ -1,23 +1,9 @@
-#!/usr/bin/env python3.7
+#!/usr/bin/env python3
 import os
 import re
 import subprocess
 import sys
 from typing import Union, TextIO
-
-
-EXAMPLE = """
-program hello_world
-kamus
-    nama : string
-    angka : integer
-    benar : boolean
-    suhu : real
-algoritma
-    input(nama)
-    print("hello", nama)
-endprogram
-"""
 
 TEMPLATE = """\
 package main
@@ -27,7 +13,6 @@ import "fmt"
 
 grammar = {
     " mod ": "%",
-    " div ": "/",
     '<-': '=',
     " then": ' {',
     "else if": "} else if",
@@ -68,11 +53,15 @@ def get_type(t, replace_all=False):
 
 
 def parse_array(pcd):
+    if "array" not in pcd:
+        # array not found here, just return it
+        return pcd
+
     p = re.search(r"array\s\[(\d+)..((?:\(*\w+(?:[+\-*/%]\w)*\)*)+)]\sof\s(\w+)", pcd)
     if p is not None:
         if int(p.group(1)) != 0:
             raise SyntaxError(f"array index does not start at 0: {pcd}") from None
-        return f"[{p.group(2)}]{get_type(p.group(3))}"
+        return f"{pcd[:p.start()]}[{p.group(2)}]{get_type(p.group(3))}{pcd[p.end():]}"
     else:
         raise SyntaxError(f'string "{pcd}" is not array') from None
 
@@ -89,7 +78,7 @@ class Algorithm:
         if isinstance(file, str):
             file = open(file)
 
-        raw = file.read()
+        raw = file.read().replace("\r\n", "\n")     # global newlines
         p = re.compile(r"((?<=endprogram)|(?<=endfunction)|(?<=endprocedure))\n*?(?=program|procedure|function)")
         blok = list(filter(bool, p.split(raw)))  # remove empty string
 
@@ -104,6 +93,8 @@ class Algorithm:
                 flist.append(cls(code))
             else:  # procedure
                 plist.append(cls(code))
+        if main is None:
+            raise SyntaxError("WHERE IS THE MAIN PROGRAM?")
         main.functions.extend(flist)
         main.procedures.extend(plist)
 
@@ -114,7 +105,7 @@ class Algorithm:
         self.code: str = ""
         self.code_list = []
         code = re.sub(r"\s*{.*}", '', code).strip()  # remove comments
-        lines = code.split("\n")
+        lines = [line.rstrip() for line in code.splitlines()]
 
         p = re.search(r"(program|procedure|function) (\w*)(?:\((.*)\))?(?:\s*?->\s*?(\w+))?", lines[0])
         if p is None:
@@ -127,6 +118,7 @@ class Algorithm:
         elif self.type == "function":
             self.fname = p.group(2)
             param = get_type(p.group(3).replace(':', ' '), replace_all=True)
+            param = parse_array(param)
             rtype = get_type(p.group(4)) or ''
             self.code_list.append(f"func {self.fname}({param}){rtype}{{")
         else:
@@ -139,7 +131,7 @@ class Algorithm:
             end = lines.index(f"end{self.type}")
         except ValueError:
             raise SyntaxError(f"{self.type} {self.fname} is not closed") from None
-        kamus = re.search(r"(?<=kamus\n).*(?=algoritma)", code, re.DOTALL)
+        kamus = re.search(r"(?<=kamus\n).*(?=algoritma)", code, re.DOTALL)  # everything between kamus and algoritma
         if kamus is not None:
             kamus_str = self.parse_type(kamus.group())
             self.declare(kamus_str)
@@ -210,7 +202,8 @@ class Algorithm:
         if self.type == "procedure":
             for match in re.finditer(rf"(?<!func ){self.fname}\((.+)\)", code):
                 fargs = split_param(match.group(1))
-                ptr_args = fargs[slice(*self.ptr_pos)]
+                start, end = self.ptr_pos
+                ptr_args = fargs[start:end+1]   # fix inconsistency of pointer placement
                 def_args = [arg for arg in fargs if arg not in ptr_args]
                 ptr_args = list(map(lambda v: '&' + v, ptr_args))  # put '&' infront of argument name
                 if self.ptr_pos[0] == 0:  # pointer first
@@ -229,31 +222,32 @@ class Algorithm:
             return
 
         algo_param = m.group(1)
-        paramlst = re.findall(r"(?:in|in/out) (?:(?:\w+,*)+ ?: ?\w+(?:, ?)*)+", algo_param)
+        new_param = parse_array(algo_param)
+        paramlst = re.findall(r"(?:in|in/out) (?:(?:\w+,*)+ ?: ?(?:\[.+])?\w+(?:, ?)*)+", new_param)
         ioparam_len, inparam_len = 0, 0
-        # paramlst = list(filter(bool, paramlst))
+
         for param in paramlst:
             param = param.strip().strip(',')
             if param.startswith("in/out"):
                 param = param.replace("in/out ", '')
-                param = re.sub(r": ?(\w+)", r"*\g<1>", param)
+                param = re.sub(r": ?((?:\[.+])?\w+)", r"*\g<1>", param)
                 res.append(get_type(param, replace_all=True))
                 # remove type
-                param = re.sub(r"\*\w+", '', param)
+                param = re.sub(r"\*(?:\[.+])?\w+", '', param)
                 ioparam_len = len(split_param(param))
                 pointers.extend(param.replace(' ', '').split(','))
             elif param.startswith("in"):
                 inparam = param[2:].replace(':', ' ')
                 res.append(get_type(inparam, replace_all=True))
-                inparam_len = len(re.sub(r" ?: ?\w+(,?) ?", r'\g<1>', inparam).split(','))  # remove type, split comma
-                # self.ptr_pos = len(inparam)
+                inparam_len = len(inparam.split(','))  # remove type, split comma
         if algo_param.startswith("in/out"):
             self.ptr_pos = 0, ioparam_len-1
         else:
             self.ptr_pos = inparam_len, inparam_len+ioparam_len
         head, body = code.split('\n', 1)  # split function head with body
         for ptr in pointers:
-            body = body.replace(ptr, '*' + ptr)
+            new_ptr = re.sub(r"(\w+)((?:\.\w+)+)?", r"(*\g<1>)\g<2>", ptr)  # known bugs 1: fixed
+            body = body.replace(ptr, new_ptr)
         code = head.replace(algo_param, join_param(res)) + '\n' + body
         self.code = code
 
@@ -269,6 +263,11 @@ class Algorithm:
         self.code = code
 
     def parse_common(self):
+        # differentiate between div (integer division) and / (float division)
+        div_map = {"/": "float32", " div ": "int"}
+        for opr, tipe in div_map.items():
+            self.code = re.sub(rf"(\w+(?:\.\d+)?|\(.+\)) ?{opr} ?(\w+(?:\.\d+)?|\(.+\))",
+                               rf"{tipe}(\g<1>)/{tipe}(\g<2>)", self.code)
         for key, val in grammar.items():
             self.code = self.code.replace(key, val)
         self.code = get_type(self.code, replace_all=True)

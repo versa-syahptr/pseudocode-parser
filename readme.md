@@ -35,6 +35,7 @@ type {type_name} <
         ...
     >
 ```
+> notice that there is no `:` after the type name
 
 * __Array__
   * Array index must start from 0
@@ -42,6 +43,14 @@ type {type_name} <
     `array [0..100] of integer` ✔
 
     `array [1..100] of integer` ❌
+    
+
+* __Division__
+    * Integer division use ` div `
+    * Real division use `/`
+    * example:
+      `5 div 2 => 2`
+      ` 5/2 => 2.5`
     
 
 ## Example
@@ -52,12 +61,12 @@ type {type_name} <
 <tr>
 <td>
 
-[custom-type.txt]()
+[custom-type.txt](https://github.com/versa-syahptr/pseudocode-parser/blob/master/example/custom-type.txt)
 
 </td>
 <td>
 
-[contohTipe.go]()
+[contohTipe.go](https://github.com/versa-syahptr/pseudocode-parser/blob/master/golang/contohTipe.go)
 
 </td>
 </tr>
@@ -72,7 +81,7 @@ kamus
        luas,volume : integer >  
     cube : balok  
 
-algoritma 
+algoritma
     input(cube.p, cube.l, cube.t) 
     cube.volume <- cube.p * cube.l * cube.t 
     cube.luas <- 2 * (cube.p*cube.l + cube.p * cube.t + cube.l * cube.t) 
@@ -108,8 +117,8 @@ func main() {
 </table>
 
 ## Known bugs
-1. invalid indirect of custom type in/out parameter `procedure baz(in/out s: Square)` where `Square` is a custom type
-2. bare array type unparsed in subprogram's parameter definition `function foo(arr: array [0..1] of integer`. <br>
+- [x] invalid indirect of custom type in/out parameter `procedure baz(in/out s: Square)` where `Square` is a custom type
+- [x] bare array type unparsed in subprogram's parameter definition `function foo(arr: array [0..1] of integer`. <br>
    **Solution:** give it alias `type bar : array [0..1] of integer` then `function foo(arr: bar)`.
 ## Notes
 

@@ -43,6 +43,6 @@ algoritma
 	for i <- 0 to n-1 do
 		jumlah <- jumlah + t[i]
 	endfor
-	hasil <- real(jumlah)/real(n)
+	hasil <- jumlah/n
 	return hasil
 endfunction
