@@ -174,9 +174,10 @@ class Algorithm:
                 self.code_list.append(line)
 
     def parse_type(self, kamus: str) -> str:
-        for match in re.finditer(r"type (\w+) ?<\n((?:\s*(?:\w+,*)+\s*:\s*[^\n]+\n?)+)\s?>\n", kamus):
+        for match in re.finditer(r"type (\w+) <((?:.*?\n?)+)>\s*\n", kamus):
             fields = ""
-            for line in match.group(2).splitlines():
+            lines = match.group(2).strip().splitlines(keepends=False)
+            for line in lines:
                 field, tipe = re.split(" *: *", line)
                 if "array" in tipe:
                     tipe = parse_array(tipe)
@@ -246,8 +247,8 @@ class Algorithm:
             self.ptr_pos = inparam_len, inparam_len+ioparam_len
         head, body = code.split('\n', 1)  # split function head with body
         for ptr in pointers:
-            new_ptr = re.sub(r"(\w+)((?:\.\w+)+)?", r"(*\g<1>)\g<2>", ptr)  # known bugs 1: fixed
-            body = body.replace(ptr, new_ptr)
+            body = re.sub(rf"(\W)({ptr})(\W)", r"\g<1>(*\g<2>)\g<3>", body)  # another bugs: fixed
+            # body = body.replace(ptr, new_ptr)
         code = head.replace(algo_param, join_param(res)) + '\n' + body
         self.code = code
 
@@ -284,7 +285,7 @@ class Algorithm:
 def gofmt(a: Algorithm) -> str or None:
     if a.type != "program":
         return
-    proc = subprocess.Popen(["gofmt", '-r', '*x[a] -> x[a]'],
+    proc = subprocess.Popen(["gofmt", '-r', '&(*a) -> a'],
                             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = proc.communicate(str(a).encode())
     if proc.returncode == 0:
