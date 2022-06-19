@@ -25,7 +25,7 @@ grammar = {
 type_map = {
     "integer": "int",
     "real": "float32",
-    "char": "rune",
+    "character": "char",
     "boolean": "bool"
 }
 block_regex = {
@@ -34,6 +34,8 @@ block_regex = {
     r"repeat(.*)until ([^\n]+)": r"for _iterator := true; _iterator; _iterator = !(\g<2>) {\g<1>}"  # repeat until
 }
 
+global_chars = []
+
 
 def split_param(s: str): return s.split(',')
 
@@ -41,7 +43,7 @@ def split_param(s: str): return s.split(',')
 def join_param(_i): return ','.join(_i)
 
 
-def error(*args): print(*args, file=sys.stderr)
+def error(*a): print(*a, file=sys.stderr)
 
 
 def get_type(t, replace_all=False):
@@ -72,6 +74,7 @@ class Algorithm:
     fname = "main"
     functions = []
     procedures = []
+    template = TEMPLATE
 
     @classmethod
     def fparse(cls, file: Union[str, TextIO]):
@@ -79,7 +82,7 @@ class Algorithm:
             file = open(file)
 
         raw = file.read().replace("\r\n", "\n")     # global newlines
-        p = re.compile(r"((?<=endprogram)|(?<=endfunction)|(?<=endprocedure))\n*?(?=program|procedure|function)")
+        p = re.compile(r"((?<=endprogram)|(?<=endfunction)|(?<=endprocedure))\s*\n*?(?=program|procedure|function)")
         blok = list(filter(bool, p.split(raw)))  # remove empty string
 
         flist = []
@@ -97,6 +100,8 @@ class Algorithm:
             raise SyntaxError("WHERE IS THE MAIN PROGRAM?")
         main.functions.extend(flist)
         main.procedures.extend(plist)
+        if "char" in raw:
+            main.template += "type char string"
 
         return main
 
@@ -142,7 +147,7 @@ class Algorithm:
     def __str__(self):
         self.compile()
         if self.type == "program":
-            gocode = TEMPLATE + '\n' + self.code + '\n'
+            gocode = self.template + '\n' + self.code + '\n'
             if len(self.functions) > 0:
                 gocode += '\n'.join([str(x) for x in self.functions])
             if len(self.procedures) > 0:
@@ -174,7 +179,7 @@ class Algorithm:
                 self.code_list.append(line)
 
     def parse_type(self, kamus: str) -> str:
-        for match in re.finditer(r"type (\w+) <((?:.*?\n?)+)>\s*\n", kamus):
+        for match in re.finditer(r"type (\w+) ?<((?:.*?\n?)+)>\s*\n", kamus):
             fields = ""
             lines = match.group(2).strip().splitlines(keepends=False)
             for line in lines:
@@ -190,11 +195,17 @@ class Algorithm:
         return kamus.strip()
 
     def compile(self):
+        # parse single equal sign
+        for idx, line in enumerate(self.code_list):
+            if "const" not in line:
+                self.code_list[idx] = re.sub(r"(?<=[^<>!=\n])=(?=[^<>!=\n])", "==", line)
+
         self.code += "\n".join(self.code_list + ['}\n'])
 
         for pattern, repl in block_regex.items():
             self.parse_block(pattern, repl)
 
+        self.parse_char()
         self.parse_stdio()
         self.parse_pointers()
         self.parse_common()
@@ -277,23 +288,52 @@ class Algorithm:
         regex = re.compile(pattern, flags=re.DOTALL)
         s = regex.sub(repl, self.code)
         self.code = s
-        # recurse to find nested for
+        # recurse to find nested block
         if regex.search(self.code) is not None:
             self.parse_block(pattern, repl)
 
+    def parse_char(self):
+        chars = []
+        code = self.code
+        for match in re.finditer(r"(\w+) ?<- ?('.')", code):
+            char_name, char_val = match.groups()
+            chars.append(char_name)
+            code = code.replace(match.group(), f"{char_name} = char({char_val})")
+            if self.type == "program":
+                global_chars.append(char_name)
+            else:
+                chars.append(char_name)
+        char_names = '|'.join(global_chars + chars)
+        if char_names != '':
+            rgx = re.compile(rf"({char_names}) ?([<>!=]+) ?(?:({char_names})|('\w'|\d+))")
+            for match in rgx.finditer(code):
+                orig = match.group()
+                left, opr, right, literal = match.groups()
+                if (right is not None) and (literal is None):
+                    code = code.replace(orig, f"{left}[0] {opr} {right}[0]")
+                elif (literal is not None) and (right is None):
+                    code = code.replace(orig, f"{left}[0] {opr} {literal}")
+                else:
+                    raise SyntaxError(f"on this code => {orig}\nbut how...")
+        self.code = code
 
-def gofmt(a: Algorithm) -> str or None:
+
+def gofmt(a: Algorithm, print_raw_if_error=False) -> str or None:
     if a.type != "program":
         return
+    raw = str(a)
     proc = subprocess.Popen(["gofmt", '-r', '&(*a) -> a'],
                             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    out, err = proc.communicate(str(a).encode())
+    out, err = proc.communicate(raw.encode())
     if proc.returncode == 0:
         return out.decode()
     else:
         error("An error occured when formating golang code")
         error(err.decode().replace("standard input", a.program_name+".go"))
-        # error("Here's the raw code:\n", a)
+        if print_raw_if_error:
+            error("Here's the raw code:")
+            for i,l in enumerate(raw.splitlines()):
+                error("{:2d}\t{}".format(i+1, l).expandtabs(2))
         sys.exit(2)
 
 
@@ -320,7 +360,7 @@ if __name__ == '__main__':
     if args.raw:
         print(algo)
     else:
-        formated = gofmt(algo)
+        formated = gofmt(algo, args.print)  # if --print flag supplied and format error happened, print raw
         # --print
         if args.print:
             print(formated)

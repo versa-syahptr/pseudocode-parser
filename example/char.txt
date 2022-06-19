@@ -1,0 +1,19 @@
+program contohChar
+kamus
+    CC, DD : char
+    a,b,c,d: boolean
+algoritma
+    CC <- 'x'
+    DD <- 'z'
+    a <- CC >= 'a'
+    b <- CC <= 'b'
+    c <- CC == 'x'
+    d <- CC == DD
+    print(a,b,c,d)
+    printCD()
+endprogram
+
+procedure printCD()
+algoritma
+    print(CC+DD)
+endprocedure

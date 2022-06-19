@@ -34,11 +34,11 @@ func rataan(t tabGol, n int) float32 {
 }
 func inputData(gol *tabGol, N *int) {
 	var temp int
-	*N = 0
+	(*N) = 0
 	fmt.Scan(&temp)
 	for temp >= 0 {
-		gol[*N] = temp
-		*N = *N + 1
+		(*gol)[(*N)] = temp
+		(*N) = (*N) + 1
 		fmt.Scan(&temp)
 	}
 }

@@ -36,17 +36,17 @@ func cetakArray(B tabInt, N int) {
 
 func tukar(a, b int, T *tabInt) {
 	var temp int
-	temp = T[a]
-	T[a] = T[b]
-	T[b] = temp
+	temp = (*T)[a]
+	(*T)[a] = (*T)[b]
+	(*T)[b] = temp
 }
 
 func mengurutkan(N int, E *tabInt) {
 	var i, j int
 	for i = 1; i <= (N - 1); i++ {
 		for j = 1; j <= (N - 1 - i); j++ {
-			if E[j-1] < E[j] {
-				tukar(j, j-1, &*E)
+			if (*E)[j-1] < (*E)[j] {
+				tukar(j, j-1, E)
 			}
 		}
 	}

@@ -27,7 +27,7 @@ func reverseArray(MaxArray int, T1, T2 *arrString) {
 	var k int
 	k = 0
 	for k <= MaxArray-1 {
-		T2[k] = T1[MaxArray-(k+1)]
+		(*T2)[k] = (*T1)[MaxArray-(k+1)]
 		k = k + 1
 	}
 }
@@ -35,6 +35,6 @@ func reverseArray(MaxArray int, T1, T2 *arrString) {
 func isiArray(N int, arr *arrString) {
 	var k int
 	for k = 0; k <= N-1; k++ {
-		fmt.Scan(&arr[k])
+		fmt.Scan(&(*arr)[k])
 	}
 }
