@@ -2,7 +2,7 @@ package main
 
 import "fmt"
 
-var r1, r2, r3 float32
+var r1, r2, r3 float64
 var n1, n2, n3 int
 var gol1, gol2, gol3 tabGol
 
@@ -22,9 +22,9 @@ func main() {
 	fmt.Println(r1, r2, r3)
 }
 
-func rataan(t tabGol, n int) float32 {
+func rataan(t tabGol, n int) float64 {
 	var i, jumlah int
-	var hasil float32
+	var hasil float64
 	jumlah = 0
 	for i = 0; i <= n-1; i++ {
 		jumlah = jumlah + t[i]

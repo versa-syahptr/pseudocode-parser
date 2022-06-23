@@ -17,3 +17,27 @@ procedure printCD()
 algoritma
     print(CC+DD)
 endprocedure
+
+function token() -> string
+kamus
+    newtok : string
+algoritma
+    while spasi() do
+       ADV()
+    endwhile
+    newtok <- CC
+    if digit() then
+        ADV()
+        while digit do
+            newtok <- newtok + CC
+            ADV()
+        endwhile
+    else if alpha() then
+        ADV()
+        while alnum() do
+            newtok <- newtok + CC
+            ADV()
+        endwhile
+    endif
+    return newtok
+endfunction

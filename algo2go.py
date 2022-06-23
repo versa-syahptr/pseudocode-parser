@@ -24,14 +24,15 @@ grammar = {
 }
 type_map = {
     "integer": "int",
-    "real": "float32",
-    "character": "char",
+    "real": "float64",
+    "char": "byte",
+    "character": "byte",
     "boolean": "bool"
 }
 block_regex = {
-    r"for (\w+) <- (\w+) to ([^\n]+) do(.*)endfor": r"for \g<1> = \g<2>; \g<1> <= \g<3>; \g<1>++{\g<4>}",  # for loop
-    r"while ([^\n]+) do(.*)\n.*endwhile": r"for \g<1> {\g<2>\n}",  # while loop
-    r"repeat(.*)until ([^\n]+)": r"for _iterator := true; _iterator; _iterator = !(\g<2>) {\g<1>}"  # repeat until
+    r"for (\w+) <- (\w+) to ([^\n]+) do(.*?)endfor": r"for \g<1> = \g<2>; \g<1> <= \g<3>; \g<1>++{\g<4>}",  # for loop
+    r"while ([^\n]+) do(.*?)\n\s*?endwhile": r"for \g<1> {\g<2>\n}",  # while loop
+    r"repeat(.*?)until ([^\n]+)": r"for _iterator := true; _iterator; _iterator = !(\g<2>) {\g<1>}"  # repeat until
 }
 
 global_chars = []
@@ -100,8 +101,6 @@ class Algorithm:
             raise SyntaxError("WHERE IS THE MAIN PROGRAM?")
         main.functions.extend(flist)
         main.procedures.extend(plist)
-        if "char" in raw:
-            main.template += "type char string"
 
         return main
 
@@ -109,6 +108,7 @@ class Algorithm:
         self._raw_code = code
         self.code: str = ""
         self.code_list = []
+        self.chars = []
         code = re.sub(r"\s*{.*}", '', code).strip()  # remove comments
         lines = [line.rstrip() for line in code.splitlines()]
 
@@ -131,11 +131,14 @@ class Algorithm:
             self.fname = p.group(2)
             self.code_list.append(f"func {self.fname}({p.group(3)}){{")
         # index
-        algi = lines.index("algoritma")
         try:
+            algi = lines.index("algoritma")
             end = lines.index(f"end{self.type}")
-        except ValueError:
-            raise SyntaxError(f"{self.type} {self.fname} is not closed") from None
+        except ValueError as e:
+            if "algoritma" in str(e):
+                raise SyntaxError(f"`algoritma` not found in {self.type} {self.fname}") from None
+            else:
+                raise SyntaxError(f"{self.type} {self.fname} is not closed") from None
         kamus = re.search(r"(?<=kamus\n).*(?=algoritma)", code, re.DOTALL)  # everything between kamus and algoritma
         if kamus is not None:
             kamus_str = self.parse_type(kamus.group())
@@ -159,6 +162,7 @@ class Algorithm:
             return self.code
 
     def declare(self, kamus: str):
+        chars = []
         for line in kamus.splitlines():
             try:
                 var, tipe = re.split(" *: *", line)
@@ -169,14 +173,19 @@ class Algorithm:
             else:
                 tipe = get_type(tipe)
 
+            if tipe == "byte":
+                chars.extend(split_param(var.replace(" ", '')))
+
             if not ("type" in var or "const" in var):
                 var = "var " + var.strip()
 
             line = var + ' ' + tipe
             if self.type == "program":
                 self.code_list.insert(0, line)  # put on global
+                global_chars.extend(chars)
             else:
                 self.code_list.append(line)
+                self.chars.extend(chars)
 
     def parse_type(self, kamus: str) -> str:
         for match in re.finditer(r"type (\w+) ?<((?:.*?\n?)+)>\s*\n", kamus):
@@ -200,12 +209,13 @@ class Algorithm:
             if "const" not in line:
                 self.code_list[idx] = re.sub(r"(?<=[^<>!=\n])=(?=[^<>!=\n])", "==", line)
 
+        self.parse_char()
+        # actual compile
         self.code += "\n".join(self.code_list + ['}\n'])
 
         for pattern, repl in block_regex.items():
             self.parse_block(pattern, repl)
 
-        self.parse_char()
         self.parse_stdio()
         self.parse_pointers()
         self.parse_common()
@@ -293,29 +303,20 @@ class Algorithm:
             self.parse_block(pattern, repl)
 
     def parse_char(self):
-        chars = []
-        code = self.code
-        for match in re.finditer(r"(\w+) ?<- ?('.')", code):
-            char_name, char_val = match.groups()
-            chars.append(char_name)
-            code = code.replace(match.group(), f"{char_name} = char({char_val})")
-            if self.type == "program":
-                global_chars.append(char_name)
-            else:
-                chars.append(char_name)
-        char_names = '|'.join(global_chars + chars)
-        if char_names != '':
-            rgx = re.compile(rf"({char_names}) ?([<>!=]+) ?(?:({char_names})|('\w'|\d+))")
-            for match in rgx.finditer(code):
-                orig = match.group()
-                left, opr, right, literal = match.groups()
-                if (right is not None) and (literal is None):
-                    code = code.replace(orig, f"{left}[0] {opr} {right}[0]")
-                elif (literal is not None) and (right is None):
-                    code = code.replace(orig, f"{left}[0] {opr} {literal}")
-                else:
-                    raise SyntaxError(f"on this code => {orig}\nbut how...")
-        self.code = code
+        # call before compile
+        comparators = ('>=', '<=', '==', '<', '>')
+        char_names = '|'.join(global_chars + self.chars)
+        if char_names:
+            for idx, line in enumerate(self.code_list):
+                if "var" not in line:
+                    line = line.replace("<-", "=")
+                    if all((c not in line for c in comparators)):   # no comparators exists in tis line
+                        m = re.search(r"(.*?)([(=])\s?(.*)\)?", line)
+                        if m is not None:
+                            pre, sym, rep = m.groups()
+                            rep = re.sub(rf"(\+ *)?(?<!\w)({char_names})(?!\w)( \+)?",
+                                         r"\g<1>string(\g<2>)\g<3>", rep)
+                            self.code_list[idx] = pre + sym + rep
 
 
 def gofmt(a: Algorithm, print_raw_if_error=False) -> str or None:
