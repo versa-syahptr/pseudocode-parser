@@ -30,8 +30,12 @@ type_map = {
     "boolean": "bool"
 }
 block_regex = {
+    # --------------- pseudocode ----------------- : ---------------------- golang ----------------------
+    # for  var  <- start to   end     actions      :   for  var  = start;  var  <=  end ;  var++ {actions}
     r"for (\w+) <- (\w+) to ([^\n]+) do(.*?)endfor": r"for \g<1> = \g<2>; \g<1> <= \g<3>; \g<1>++{\g<4>}",  # for loop
+    #      condition  actions              :    conditions {actions}
     r"while ([^\n]+) do(.*?)\n\s*?endwhile": r"for \g<1> {\g<2>\n}",  # while loop
+    #      actions   stop_condition :                                       !stop_condition {actions}
     r"repeat(.*?)until ([^\n]+)": r"for _iterator := true; _iterator; _iterator = !(\g<2>) {\g<1>}"  # repeat until
 }
 
@@ -59,7 +63,7 @@ def parse_array(pcd):
     if "array" not in pcd:
         # array not found here, just return it
         return pcd
-
+    #               array --[start.. ------------- end ------------]  of  tipe
     p = re.search(r"array\s\[(\d+)..((?:\(*\w+(?:[+\-*/%]\w)*\)*)+)]\sof\s(\w+)", pcd)
     if p is not None:
         if int(p.group(1)) != 0:
@@ -111,8 +115,8 @@ class Algorithm:
         self.chars = []
         code = re.sub(r"\s*{.*}", '', code).strip()  # remove comments
         lines = [line.rstrip() for line in code.splitlines()]
-
-        p = re.search(r"(program|procedure|function) (\w*)(?:\((.*)\))?(?:\s*?->\s*?(\w+))?", lines[0])
+        #               ----------- tipe ----------- nama -- parameter ------- return type --
+        p = re.search(r"(program|procedure|function) (\w*) ?(?:\((.*)\))?(?:\s*?->\s*?(\w+))?", lines[0])
         if p is None:
             raise SyntaxError(f"error on this (sub)program\n" + code)
         self.type = p.group(1)
@@ -188,6 +192,7 @@ class Algorithm:
                 self.chars.extend(chars)
 
     def parse_type(self, kamus: str) -> str:
+        #                                name  <   fields    >
         for match in re.finditer(r"type (\w+) ?<((?:.*?\n?)+)>\s*\n", kamus):
             fields = ""
             lines = match.group(2).strip().splitlines(keepends=False)
@@ -207,6 +212,7 @@ class Algorithm:
         # parse single equal sign
         for idx, line in enumerate(self.code_list):
             if "const" not in line:
+                # replace single = to ==
                 self.code_list[idx] = re.sub(r"(?<=[^<>!=\n])=(?=[^<>!=\n])", "==", line)
 
         self.parse_char()
@@ -245,6 +251,7 @@ class Algorithm:
 
         algo_param = m.group(1)
         new_param = parse_array(algo_param)
+        #                        param_group  ------------- parameters --------------
         paramlst = re.findall(r"(?:in|in/out) (?:(?:\w+,*)+ ?: ?(?:\[.+])?\w+(?:, ?)*)+", new_param)
         ioparam_len, inparam_len = 0, 0
 
@@ -274,11 +281,11 @@ class Algorithm:
         self.code = code
 
     def parse_stdio(self):
-        code = re.sub(r"(?:print|write|output)\((.*)\)",
+        code = re.sub(r"(?:print|write|output) ?\((.*)\)",
                       r"fmt.Println(\g<1>)",
                       self.code)
 
-        p = re.compile(r"(?:input|read)\(((?:.*)+?)\)")
+        p = re.compile(r"(?:input|read) ?\(((?:.*)+?)\)")
         for match in p.finditer(self.code):
             code = code.replace(match.group(), f"fmt.Scan(&{match.group(1).replace(',', ',&')})")
 
