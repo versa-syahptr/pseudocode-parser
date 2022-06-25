@@ -1,7 +1,9 @@
 # algo2go.py
 Parse pseudocode taught in programming algorithm course Informatics Tel-U. Pseudocode notation will be **translated** to
 **Go language** and then compiled and executed. **Go compiler is required.**
-## Usage
+## See it in action!
+I've made the web version of **algo2go**, try it here -> https://versa.ptangsana.co.id/algo2go/
+## CLI Usage
 ```shell
 algo2go.py [-h] [--run] [--raw] [--print] [--dump] [-d DIR] file
 
@@ -43,6 +45,11 @@ type {type_name} <
     `array [0..100] of integer` ✔
 
     `array [1..100] of integer` ❌
+    
+  * Array's last index ≠ array's capacity
+  
+    `array [0..100] of any` has 101 elements and 100 is the last index. It will be translated to `[100+1]any` in Go.
+    
     
 
 * __Division__
@@ -116,10 +123,7 @@ func main() {
 </tr>
 </table>
 
-## Known bugs
-- [x] invalid indirect of custom type in/out parameter `procedure baz(in/out s: Square)` where `Square` is a custom type
-- [x] bare array type unparsed in subprogram's parameter definition `function foo(arr: array [0..1] of integer`. <br>
-   **Solution:** give it alias `type bar : array [0..1] of integer` then `function foo(arr: bar)`.
+
 ## Notes
 
 > **algo2go.py** is an enhancement of **algo.py**. Where the implementation of **algo.py** is limited because it uses the 
