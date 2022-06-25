@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+
+# algo2go.py
+# Copyright (C) 2022 Versa Syahputra
+# https://github.com/versa-syahptr/pseudocode-parser
+
 import os
 import re
 import subprocess
@@ -68,7 +73,7 @@ def parse_array(pcd):
     if p is not None:
         if int(p.group(1)) != 0:
             raise SyntaxError(f"array index does not start at 0: {pcd}") from None
-        return f"{pcd[:p.start()]}[{p.group(2)}]{get_type(p.group(3))}{pcd[p.end():]}"
+        return f"{pcd[:p.start()]}[{p.group(2)}+1]{get_type(p.group(3))}{pcd[p.end():]}"
     else:
         raise SyntaxError(f'string "{pcd}" is not array') from None
 
@@ -293,7 +298,7 @@ class Algorithm:
 
     def parse_common(self):
         # differentiate between div (integer division) and / (float division)
-        div_map = {"/": "float32", " div ": "int"}
+        div_map = {"/": "float64", " div ": "int"}
         for opr, tipe in div_map.items():
             self.code = re.sub(rf"(\w+(?:\.\d+)?|\(.+\)) ?{opr} ?(\w+(?:\.\d+)?|\(.+\))",
                                rf"{tipe}(\g<1>)/{tipe}(\g<2>)", self.code)
@@ -325,6 +330,10 @@ class Algorithm:
                                          r"\g<1>string(\g<2>)\g<3>", rep)
                             self.code_list[idx] = pre + sym + rep
 
+    def load_module(self, module: str):
+        if self.type == "program":
+            self.template += f'import "{module}"\n'
+
 
 def gofmt(a: Algorithm, print_raw_if_error=False) -> str or None:
     if a.type != "program":
@@ -355,6 +364,8 @@ if __name__ == '__main__':
     parser.add_argument("--dump", action="store_true", help="delete *.go file after running")
     parser.add_argument('-d', "--dir", help="Output directory to write Go file, default: current directory",
                         metavar="DIR", default='.')
+    parser.add_argument("--import", action="extend", dest="modules", nargs='+',
+                        metavar="module", help="import Go module")
     parser.add_argument("file", type=argparse.FileType('r'), help="the pseudocode file to compile or run")
     args = parser.parse_args()
 
@@ -363,6 +374,10 @@ if __name__ == '__main__':
 
     algo = Algorithm.fparse(args.file)
     go_fname = os.path.join(args.dir, f"{algo.program_name}.go")
+
+    if args.modules is not None:
+        for mod in args.modules:
+            algo.load_module(mod)
 
     # --raw
     if args.raw:
