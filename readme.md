@@ -26,7 +26,7 @@ Run pseudocode | `algo2go.py --run pseudocode.txt` | `<program-name>.go`
 Run pseudocode and delete go file after run | `algo2go.py --run --dump pseudocode.txt` | None (deleted after run)
 
 ## Syntax
-![](https://user-images.githubusercontent.com/55734080/158105911-7ba0d191-6828-47b4-9e22-e6d01f404a6f.png)
+![](https://versa.ptangsana.co.id/algo2go/cheatsheet.png)
 
 ## Additional Syntax & Rules
 * __Custom Types__ (Tipe Bentukan)
