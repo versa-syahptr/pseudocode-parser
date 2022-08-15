@@ -286,14 +286,22 @@ class Algorithm:
         self.code = code
 
     def parse_stdio(self):
-        code = re.sub(r"(?:print|write|output) ?\((.*)\)",
-                      r"fmt.Println(\g<1>)",
-                      self.code)
+        code = self.code
+        inputf = ("input", "read")
+        printf = ("print", "write", "output")
 
-        p = re.compile(r"(?:input|read) ?\(((?:.*)+?)\)")
-        for match in p.finditer(self.code):
-            code = code.replace(match.group(), f"fmt.Scan(&{match.group(1).replace(',', ',&')})")
-
+        prin_rgx = re.compile(rf"({'|'.join(inputf+printf)}) ?(\(?)(.*\)?)")
+        for match in prin_rgx.finditer(code):
+            fun, spar, arg = match.groups()
+            line = match.group().strip()
+            if spar != '(':
+                raise SyntaxError(f"Expected '(' for line '{line}'")
+            elif not arg.endswith(')'):
+                raise SyntaxError(f"Expected ')' for line '{line}'")
+            if fun in printf:
+                code = code.replace(match.group(), f"fmt.Println{spar}{arg}")
+            else:
+                code = code.replace(match.group(), f"fmt.Scan(&{arg.replace(',', ',&')}")
         self.code = code
 
     def parse_common(self):
