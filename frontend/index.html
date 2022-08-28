@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="us-ascii">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pseudocode parser</title>
+    <link href="prism.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.8/codemirror.min.css" integrity="sha512-uf06llspW44/LZpHzHT6qBOIVODjWtv4MxCricRxkzvopAlSWnTf6hpZTFxuuZcuNE9CBQhqE0Seu1CoRk84nQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.8/theme/material.min.css" integrity="sha512-jA21084nir3cN96YuzJ1DbtDn30kxhxqQToAzCEGZcuRAswWfYirpUu8HVm8wRNoWDCYtA4iavd2Rb1bQSLv7g==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" media="screen" href="https://fontlibrary.org//face/fira-code" type="text/css"/>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.8/codemirror.min.js" integrity="sha512-x6DoCPSTG2j4jstyagAfMB/e4gi9CWZaiv9EpjGzx9hnzEMxxwi9Qgxgb2t0EH0b5OfjJiN+c1iuXC4lVcsPew==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.8/addon/mode/simple.min.js" integrity="sha512-CGM6DWPHs250F/m90YZ9NEiEUhd9a4+u8wAzeKC6uHzZbYyt9/e2dLC5BGGB6Y0HtEdZQdSDYjDsoTyNGdMrMA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.8/addon/edit/matchbrackets.min.js" integrity="sha512-GSYCbN/le5gNmfAWVEjg1tKnOH7ilK6xCLgA7c48IReoIR2g2vldxTM6kZlN6o3VtWIe6fHu/qhwxIt11J8EBA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.8/addon/edit/closebrackets.min.js" integrity="sha512-tsjcYO5hFvViRssxiM7Jhd8601epWOx1He3Hl4yuI5dKKPxr43KxkOhc9GZeeqzlYJm9ABb7UPA9697NiqZZ7Q==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="algo.js"></script>
+    <script src="syntax.js"></script>
+    <style type="text/css">
+        h1 {
+            text-align: center;
+        }
+        .CodeMirror {
+            font-family: 'FiraCodeRegular', monospace;
+            font-weight: normal;
+            font-style: normal;
+            font-size: small;
+            border: 1px solid black;
+            width:100%;
+            height:80%;
+            margin-bottom: 1em;
+        }
+        textarea#algo {
+            width:100%;
+            height:90%;
+            margin-bottom: 1em;
+            background: url(http://i.imgur.com/2cOaJ.png);
+            background-attachment: local;
+            background-repeat: no-repeat;
+            padding-left: 35px;
+            padding-top: 10px;
+            border-color:#ccc;
+            white-space: pre;
+            overflow-wrap: normal;
+            overflow-x: scroll;
+        }
+        .hide{
+        display: none;
+        }
+    </style>
+    <script>
+            // window.onload = function() {
+            //     alert("Hari ini ujian Alpro. Saya selaku pengembang aplikasi ini tidak bertanggung jawab atas konsekuensi dari digunakannya aplikasi ini saat ujian")
+            //     alert("semoga kita semua mendapat hasil yang terbaik, semangat!")
+            // }
+    </script>
+</head>
+<body style="background: transparent; position: relative;">
+<h1>algo2go</h1>
+<form name="pseudocode form" onsubmit="return sendData ()">
+<label for="algo">Pseudocode:</label><br />
+<textarea autofocus="autofocus" id="algo" name="algo" required="required" spellcheck="false"></textarea>
+<div style="display:inline;">
+<input id="subtn" name="Submit" type="submit" value="Compile to Golang!" />
+<label>
+    <input type="checkbox" id="dark">
+    <span>Dark Mode Editor</span>
+</label>
+</div>
+</form>
+<div>
+<h4>Translate Result:</h4>
+<pre><code id="res"></code>
+        </pre>
+</div>
+<div id="run" class="hide">
+<label for="input"><b>Input: </b></label>
+<textarea name="" id="input" cols="30" rows="3"></textarea>
+<button onClick="tes()">Run!</button>
+</div>
+<div id="runres" class="hide">
+<h4>Run Result:</h4>
+<pre id="resf"></pre>
+</div>
+<footer>
+    <div>
+        
+    </div>
+    
+<p align="center">algo2go.py by <a href="https://versa.ptangsana.co.id/">Versa Syahputra</a>.
+Details on <a id="gh" href="https://github.com/versa-syahptr/pseudocode-parser" target="_blank">Github</a>,
+or Download the algo2go.py script <a href="dl.php" target="_blank" download>here</a>.</p>
+</footer>
+<script src="prism.js"></script>
+<script src="script.js"></script>
+</body>
+</html>

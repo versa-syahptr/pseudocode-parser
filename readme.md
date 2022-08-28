@@ -123,6 +123,15 @@ func main() {
 </tr>
 </table>
 
+---
+
+### Web IDE Components
+- [x] Text editor
+- [x] algo2go php interface
+- [x] Online Go Compiler
+- [x] Psudocode Syntax highliter
+- [ ] Psudocode Autocompletion
+- [ ] Psudocode linter
 
 ## Notes
 

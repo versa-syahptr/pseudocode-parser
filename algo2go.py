@@ -2,7 +2,8 @@
 
 # algo2go.py
 # Copyright (C) 2022 Versa Syahputra
-# https://github.com/versa-syahptr/pseudocode-parser
+# core repo : https://github.com/versa-syahptr/pseudocode-parser
+# web IDE   : https://versa.ptangsana.co.id/algo2go/
 
 import os
 import re
@@ -56,6 +57,11 @@ def join_param(_i): return ','.join(_i)
 def error(*a): print(*a, file=sys.stderr)
 
 
+def raise_notb(excpt):
+    sys.tracebacklimit = 0
+    raise excpt
+
+
 def get_type(t, replace_all=False):
     if replace_all:
         for pseudotype, gotype in type_map.items():
@@ -72,10 +78,10 @@ def parse_array(pcd):
     p = re.search(r"array\s\[(\d+)..((?:\(*\w+(?:[+\-*/%]\w)*\)*)+)]\sof\s(\w+)", pcd)
     if p is not None:
         if int(p.group(1)) != 0:
-            raise SyntaxError(f"array index does not start at 0: {pcd}") from None
+            raise_notb(SyntaxError(f"array index does not start at 0: {pcd}"))
         return f"{pcd[:p.start()]}[{p.group(2)}+1]{get_type(p.group(3))}{pcd[p.end():]}"
     else:
-        raise SyntaxError(f'string "{pcd}" is not array') from None
+        raise_notb(SyntaxError(f'string "{pcd}" is not array'))
 
 
 class Algorithm:
@@ -85,6 +91,7 @@ class Algorithm:
     functions = []
     procedures = []
     template = TEMPLATE
+    raw_lines: list[str]
 
     @classmethod
     def fparse(cls, file: Union[str, TextIO]):
@@ -104,12 +111,16 @@ class Algorithm:
                 main = cls(code)
             elif code.startswith("function"):
                 flist.append(cls(code))
-            else:  # procedure
+            elif code.startswith("procedure"):
                 plist.append(cls(code))
+            else:
+                error("Error: no program or subprogram detected!")
+                sys.exit(1)
         if main is None:
-            raise SyntaxError("WHERE IS THE MAIN PROGRAM?")
+            raise_notb(SyntaxError("WHERE IS THE MAIN PROGRAM?"))
         main.functions.extend(flist)
         main.procedures.extend(plist)
+        cls.raw_lines = raw.splitlines()
 
         return main
 
@@ -123,7 +134,7 @@ class Algorithm:
         #               ----------- tipe ----------- nama -- parameter ------- return type --
         p = re.search(r"(program|procedure|function) (\w*) ?(?:\((.*)\))?(?:\s*?->\s*?(\w+))?", lines[0])
         if p is None:
-            raise SyntaxError(f"error on this (sub)program\n" + code)
+            raise_notb(SyntaxError(f"error on this (sub)program\n" + code))
         self.type = p.group(1)
         if self.type == "program":
             self.program_name = p.group(2)
@@ -145,15 +156,15 @@ class Algorithm:
             end = lines.index(f"end{self.type}")
         except ValueError as e:
             if "algoritma" in str(e):
-                raise SyntaxError(f"`algoritma` not found in {self.type} {self.fname}") from None
+                raise_notb(SyntaxError(f"`algoritma` not found in {self.type} {self.fname}"))
             else:
-                raise SyntaxError(f"{self.type} {self.fname} is not closed") from None
+                raise_notb(SyntaxError(f"{self.type} {self.fname} is not closed"))
         kamus = re.search(r"(?<=kamus\n).*(?=algoritma)", code, re.DOTALL)  # everything between kamus and algoritma
         if kamus is not None:
             kamus_str = self.parse_type(kamus.group())
             self.declare(kamus_str)
         elif kamus is None and self.type == "program":
-            raise SyntaxError("No variable declared in main program") from None
+            raise_notb(SyntaxError("No variable declared in main program"))
         self.code_list.extend(lines[algi + 1:end])
 
     def __str__(self):
@@ -176,7 +187,7 @@ class Algorithm:
             try:
                 var, tipe = re.split(" *: *", line)
             except ValueError:
-                raise SyntaxError(f'error => "{line}" from \n {self._raw_code}') from None
+                raise_notb(SyntaxError(f'error => "{line}" from \n {self._raw_code}'))
             if "array" in tipe:
                 tipe = parse_array(tipe)
             else:
@@ -294,10 +305,11 @@ class Algorithm:
         for match in prin_rgx.finditer(code):
             fun, spar, arg = match.groups()
             line = match.group().strip()
+            line_no = re_index(Algorithm.raw_lines, line)
             if spar != '(':
-                raise SyntaxError(f"Expected '(' for line '{line}'")
+                raise_notb(SyntaxError(f"Expected '(' for procedure {fun} at line {line_no}\n\n>> {line}"))
             elif not arg.endswith(')'):
-                raise SyntaxError(f"Expected ')' for line '{line}'")
+                raise_notb(SyntaxError(f"Expected ')' for procedure {fun} at line {line_no}\n\n>> {line}"))
             if fun in printf:
                 code = code.replace(match.group(), f"fmt.Println{spar}{arg}")
             else:
@@ -362,9 +374,15 @@ def gofmt(a: Algorithm, print_raw_if_error=False) -> str or None:
         sys.exit(2)
 
 
+def re_index(lst: list[str], sline: str):
+    for index, line in enumerate(lst):
+        if sline in line:
+            return index+1
+
+
 if __name__ == '__main__':
     import argparse
-    sys.tracebacklimit = 0
+    # sys.tracebacklimit = 0
     parser = argparse.ArgumentParser()
     parser.add_argument("--run", action="store_true", help="parse, compile, and run the pseudocode")
     parser.add_argument("--raw", action="store_true", help="print unformated golang code")
