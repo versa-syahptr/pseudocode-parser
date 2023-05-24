@@ -15,8 +15,8 @@ CodeMirror.defineSimpleMode("algo", {
         token: "keyword"},
         {regex: /\b(?:true|false|in(?:\/out)?|integer|string|real|char(?:acter)?)\b/, 
         token: "atom"},
-        // {regex: /0x[a-f\d]+|[-+]?(?:\.\d+|\d+\.?\d*)(?:e[-+]?\d+)?/i,
-        {regex: /\d+/,
+        {regex: /[^a-zA-Z_]0x[a-f\d]+|[-+]?(?:\.\d+|\d+\.?\d*)(?:e[-+]?\d+)?/i,
+        // {regex: /\d+/,
         token: "number"},
         // {regex: /\/\/.*/, token: "comment"},
         // {regex: /\/(?:[^\\]|\\.)*?\//, token: "variable-3"},
@@ -49,7 +49,8 @@ CodeMirror.defineSimpleMode("algo", {
     // },
     // type definition
     kamus: [
-        {regex: /(type) (\w) </, token: ["variable", "operator"]},
+        {regex: /(\w+) <-/, token: ["variable"]},
+        {regex: /(type) (\w) </, token: ["keyword","variable"]},
         {regex: /(array)\s?\[(\d)..(\w+)\]\s(of)\s(\w+)/,
         token: ["keyword", "number", "variable-3", "keyword", "atom"]},
         {regex: /algoritma$/, token: "keyword", dedent: true, next: "start", sol: true},

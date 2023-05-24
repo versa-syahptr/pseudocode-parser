@@ -1,4 +1,4 @@
-const baseUrl = "https://versa.ptangsana.co.id/algo2go"
+const baseUrl = ""
 const TB = document.getElementById("algo");
 var oldVal = "";
 var GO = "";
@@ -75,7 +75,7 @@ function sendData() {
     data.append("algo", oldVal);
 
     // (B) INIT FETCH POST
-    fetch(baseUrl+"/api.php", {
+    fetch(baseUrl+"/auto", {
         method: "POST",
         body: data
     })
@@ -85,13 +85,13 @@ function sendData() {
         if (result.status != 200) {
             throw new Error("Bad Server Response: "+result.status);
         }
-        return result.text();
+        return result.json();
     })
 
     // (D) SERVER RESPONSE
     .then((response) => {
         
-        res_dom.innerHTML = response;
+        res_dom.innerHTML = response.res;
         res_dom.parentElement.scrollIntoView();
         activate(response);
         subtn.disabled=false;
@@ -99,6 +99,7 @@ function sendData() {
 
     // (E) HANDLE ERRORS - OPTIONAL
     .catch((error) => {
+        console.error(error)
         alert(error);
         subtn.disabled=false;
     });
@@ -108,15 +109,16 @@ function sendData() {
 }
 
 function activate(go) {
+    // activate prism.js if no error from BE
     var div = document.getElementById("run")
-    if (go.startsWith("package")) {
-        var rex = /^program (\w+)$/gm
-        var match = rex.exec(oldVal)
-        pname = match[1]
+    if (go.success) {
+//        var rex = /^program (\w+)$/gm
+//        var match = rex.exec(oldVal)
+        pname = go.filename
         res_dom.classList.add("language-go")
         Prism.highlightElement(res_dom);
         div.classList.remove("hide")
-        GO = go;
+        GO = go.res;
     } else {
         res_dom.classList.remove("language-go")
         res_dom.parentElement.classList.remove("language-go")
@@ -125,7 +127,7 @@ function activate(go) {
 
 }
 
-function tes() {
+function gorun() {
     var obj = {
         "name": "Go",
         "title": "Go Hello World!",
@@ -145,7 +147,7 @@ function tes() {
         "visibility": "public"
     }
 
-    fetch(baseUrl+"pass.php", {
+    fetch(baseUrl+"/pass.php", {
             method: 'POST',
             body: JSON.stringify(obj),
             headers: {
@@ -169,6 +171,7 @@ function tes() {
 }
 
 function display(res) {
+// display output from running golang
     document.getElementById("runres").classList.remove("hide")
     var field = document.getElementById("resf")
     if (res.stdout !== null) {

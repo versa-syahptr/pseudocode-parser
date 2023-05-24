@@ -12,7 +12,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.8/addon/mode/simple.min.js" integrity="sha512-CGM6DWPHs250F/m90YZ9NEiEUhd9a4+u8wAzeKC6uHzZbYyt9/e2dLC5BGGB6Y0HtEdZQdSDYjDsoTyNGdMrMA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.8/addon/edit/matchbrackets.min.js" integrity="sha512-GSYCbN/le5gNmfAWVEjg1tKnOH7ilK6xCLgA7c48IReoIR2g2vldxTM6kZlN6o3VtWIe6fHu/qhwxIt11J8EBA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.8/addon/edit/closebrackets.min.js" integrity="sha512-tsjcYO5hFvViRssxiM7Jhd8601epWOx1He3Hl4yuI5dKKPxr43KxkOhc9GZeeqzlYJm9ABb7UPA9697NiqZZ7Q==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <script src="algo.js"></script>
     <script src="syntax.js"></script>
     <style type="text/css">
         h1 {
@@ -25,7 +24,7 @@
             font-size: small;
             border: 1px solid black;
             width:100%;
-            height:80%;
+            height:75vh;
             margin-bottom: 1em;
         }
         textarea#algo {
@@ -74,7 +73,7 @@
 <div id="run" class="hide">
 <label for="input"><b>Input: </b></label>
 <textarea name="" id="input" cols="30" rows="3"></textarea>
-<button onClick="tes()">Run!</button>
+<button onClick="gorun()">Run!</button>
 </div>
 <div id="runres" class="hide">
 <h4>Run Result:</h4>

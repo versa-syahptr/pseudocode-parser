@@ -9,6 +9,8 @@ import os
 import re
 import subprocess
 import sys
+from io import StringIO
+from textwrap import dedent
 from typing import Union, TextIO
 
 TEMPLATE = """\
@@ -47,6 +49,17 @@ block_regex = {
 
 global_chars = []
 
+# hide traceback in production
+if "dev" not in os.environ:
+    print("prod")
+    sys.tracebacklimit = 0
+
+
+class FormattingError(SyntaxError):
+    def __init__(self, msg, raw_code=""):
+        code = '\n'.join(["{:2d}\t{}".format(i+1, l).expandtabs(2) for i, l in enumerate(raw_code.splitlines())])
+        msg = f"An error occured when formating golang code:\n{msg}\nThis is the raw code generated:\n{code}"
+        super().__init__(msg)
 
 def split_param(s: str): return s.split(',')
 
@@ -57,9 +70,15 @@ def join_param(_i): return ','.join(_i)
 def error(*a): print(*a, file=sys.stderr)
 
 
-def raise_notb(excpt):
-    sys.tracebacklimit = 0
-    raise excpt
+def split_subprograms(code: str) -> list:
+    """
+    split subprograms in raw code
+    :param code: raw pseudocode
+    :return: list of Algorithm instance
+    """
+    p = re.compile(r"((?<=endprogram)|(?<=endfunction)|(?<=endprocedure))\s*\n*?(?=program|procedure|function)")
+    blok = list(filter(bool, p.split(code)))
+    return blok
 
 
 def get_type(t, replace_all=False):
@@ -78,10 +97,10 @@ def parse_array(pcd):
     p = re.search(r"array\s\[(\d+)..((?:\(*\w+(?:[+\-*/%]\w)*\)*)+)]\sof\s(\w+)", pcd)
     if p is not None:
         if int(p.group(1)) != 0:
-            raise_notb(SyntaxError(f"array index does not start at 0: {pcd}"))
+            raise SyntaxError(f"array index does not start at 0: {pcd}")
         return f"{pcd[:p.start()]}[{p.group(2)}+1]{get_type(p.group(3))}{pcd[p.end():]}"
     else:
-        raise_notb(SyntaxError(f'string "{pcd}" is not array'))
+        raise SyntaxError(f'string "{pcd}" is not array')
 
 
 class Algorithm:
@@ -97,10 +116,12 @@ class Algorithm:
     def fparse(cls, file: Union[str, TextIO]):
         if isinstance(file, str):
             file = open(file)
+        return cls.fullparse(file.read())
 
-        raw = file.read().replace("\r\n", "\n")     # global newlines
-        p = re.compile(r"((?<=endprogram)|(?<=endfunction)|(?<=endprocedure))\s*\n*?(?=program|procedure|function)")
-        blok = list(filter(bool, p.split(raw)))  # remove empty string
+    @classmethod
+    def fullparse(cls, algo_str: str):
+        raw = algo_str.replace("\r\n", "\n")     # global newlines
+        blok = split_subprograms(raw)
 
         flist = []
         plist = []
@@ -117,7 +138,7 @@ class Algorithm:
                 error("Error: no program or subprogram detected!")
                 sys.exit(1)
         if main is None:
-            raise_notb(SyntaxError("WHERE IS THE MAIN PROGRAM?"))
+            raise SyntaxError("WHERE IS THE MAIN PROGRAM?")
         main.functions.extend(flist)
         main.procedures.extend(plist)
         cls.raw_lines = raw.splitlines()
@@ -125,6 +146,7 @@ class Algorithm:
         return main
 
     def __init__(self, code):
+        self.compiled = False
         self._raw_code = code
         self.code: str = ""
         self.code_list = []
@@ -134,7 +156,7 @@ class Algorithm:
         #               ----------- tipe ----------- nama -- parameter ------- return type --
         p = re.search(r"(program|procedure|function) (\w*) ?(?:\((.*)\))?(?:\s*?->\s*?(\w+))?", lines[0])
         if p is None:
-            raise_notb(SyntaxError(f"error on this (sub)program\n" + code))
+            raise SyntaxError(f"error on this (sub)program\n" + code)
         self.type = p.group(1)
         if self.type == "program":
             self.program_name = p.group(2)
@@ -156,30 +178,20 @@ class Algorithm:
             end = lines.index(f"end{self.type}")
         except ValueError as e:
             if "algoritma" in str(e):
-                raise_notb(SyntaxError(f"`algoritma` not found in {self.type} {self.fname}"))
+                raise SyntaxError(f"`algoritma` not found in {self.type} {self.fname}")
             else:
-                raise_notb(SyntaxError(f"{self.type} {self.fname} is not closed"))
+                raise SyntaxError(f"{self.type} {self.fname} is not closed")
         kamus = re.search(r"(?<=kamus\n).*(?=algoritma)", code, re.DOTALL)  # everything between kamus and algoritma
         if kamus is not None:
             kamus_str = self.parse_type(kamus.group())
             self.declare(kamus_str)
         elif kamus is None and self.type == "program":
-            raise_notb(SyntaxError("No variable declared in main program"))
+            raise SyntaxError("No variable declared in main program")
         self.code_list.extend(lines[algi + 1:end])
 
     def __str__(self):
         self.compile()
-        if self.type == "program":
-            gocode = self.template + '\n' + self.code + '\n'
-            if len(self.functions) > 0:
-                gocode += '\n'.join([str(x) for x in self.functions])
-            if len(self.procedures) > 0:
-                gocode += '\n'.join([str(x) for x in self.procedures])
-                for procedure in self.procedures:
-                    gocode = procedure.parse_procedure(gocode)
-            return gocode
-        else:
-            return self.code
+        return self.code
 
     def declare(self, kamus: str):
         chars = []
@@ -187,7 +199,7 @@ class Algorithm:
             try:
                 var, tipe = re.split(" *: *", line)
             except ValueError:
-                raise_notb(SyntaxError(f'error => "{line}" from \n {self._raw_code}'))
+                raise SyntaxError(f'error => "{line}" from \n {self._raw_code}')
             if "array" in tipe:
                 tipe = parse_array(tipe)
             else:
@@ -208,6 +220,14 @@ class Algorithm:
                 self.chars.extend(chars)
 
     def parse_type(self, kamus: str) -> str:
+        """
+        translate custom type or stucture
+
+        type custom <       ->      type custom struct {
+            x: integer      ->          x int
+            y: real         ->          y float64
+        >                   ->      }
+        """
         #                                name  <   fields    >
         for match in re.finditer(r"type (\w+) ?<((?:.*?\n?)+)>\s*\n", kamus):
             fields = ""
@@ -225,6 +245,9 @@ class Algorithm:
         return kamus.strip()
 
     def compile(self):
+        if self.compiled:
+            # make sure compile() called once
+            return
         # parse single equal sign
         for idx, line in enumerate(self.code_list):
             if "const" not in line:
@@ -241,8 +264,23 @@ class Algorithm:
         self.parse_stdio()
         self.parse_pointers()
         self.parse_common()
+        # "compile" subprograms
+        if self.type == "program":
+            gocode = self.template + '\n' + self.code + '\n'
+            if len(self.functions) > 0:
+                gocode += '\n'.join([str(x) for x in self.functions])
+            if len(self.procedures) > 0:
+                gocode += '\n'.join([str(x) for x in self.procedures])
+                for procedure in self.procedures:
+                    gocode = procedure.parse_procedure(gocode)
+            self.code = gocode
+        self.compiled = True
 
     def parse_procedure(self, code: str) -> str:
+        """
+        translate procedure calls
+        procedure_x(a,b,c) -> procedure_x(&a, &b, &c)   # depends on procedure's parameter declaration
+        """
         if self.type == "procedure":
             for match in re.finditer(rf"(?<!func ){self.fname}\((.+)\)", code):
                 fargs = split_param(match.group(1))
@@ -258,6 +296,10 @@ class Algorithm:
         return code
 
     def parse_pointers(self):
+        """
+        translate procedure declaration
+        procedure proc(in x: integer, in/out y: integer) -> func proc(x int, y *int)
+        """
         m = re.search(rf"(?<=func {self.fname})\((.*(?:in |in/out).*.*)\)", self.code)
         pointers = []
         res = []
@@ -297,19 +339,29 @@ class Algorithm:
         self.code = code
 
     def parse_stdio(self):
+        """
+        translate i/o functions
+
+        input(a,b) | read(a,b)                  -> fmt.Scan(&a, &b)
+        print(a,b) | write(a,b) | output(a,b)   -> fmt.Print(a,b)
+        """
         code = self.code
         inputf = ("input", "read")
         printf = ("print", "write", "output")
 
-        prin_rgx = re.compile(rf"({'|'.join(inputf+printf)}) ?(\(?)(.*\)?)")
+        prin_rgx = re.compile(rf"({'|'.join(inputf+printf)})\b ?(\(?)(.*\)?)")
         for match in prin_rgx.finditer(code):
             fun, spar, arg = match.groups()
             line = match.group().strip()
-            line_no = re_index(Algorithm.raw_lines, line)
+            if hasattr(Algorithm, "raw_lines"):
+                raw_lines = Algorithm.raw_lines
+            else:
+                raw_lines = self.code_list
+            line_no = re_index(raw_lines, line)
             if spar != '(':
-                raise_notb(SyntaxError(f"Expected '(' for procedure {fun} at line {line_no}\n\n>> {line}"))
+                raise SyntaxError(f"Expected '(' for procedure {fun} at line {line_no}\n\n>> {line}")
             elif not arg.endswith(')'):
-                raise_notb(SyntaxError(f"Expected ')' for procedure {fun} at line {line_no}\n\n>> {line}"))
+                raise SyntaxError(f"Expected ')' for procedure {fun} at line {line_no}\n\n>> {line}")
             if fun in printf:
                 code = code.replace(match.group(), f"fmt.Println{spar}{arg}")
             else:
@@ -317,6 +369,9 @@ class Algorithm:
         self.code = code
 
     def parse_common(self):
+        """
+        translate keywords
+        """
         # differentiate between div (integer division) and / (float division)
         div_map = {"/": "float64", " div ": "int"}
         for opr, tipe in div_map.items():
@@ -327,6 +382,9 @@ class Algorithm:
         self.code = get_type(self.code, replace_all=True)
 
     def parse_block(self, pattern, repl):
+        """
+        translate while, for, and if else
+        """
         regex = re.compile(pattern, flags=re.DOTALL)
         s = regex.sub(repl, self.code)
         self.code = s
@@ -335,7 +393,10 @@ class Algorithm:
             self.parse_block(pattern, repl)
 
     def parse_char(self):
-        # call before compile
+        """
+        translate characters
+        """
+        # call before compile()
         comparators = ('>=', '<=', '==', '<', '>')
         char_names = '|'.join(global_chars + self.chars)
         if char_names:
@@ -355,23 +416,22 @@ class Algorithm:
             self.template += f'import "{module}"\n'
 
 
-def gofmt(a: Algorithm, print_raw_if_error=False) -> str or None:
-    if a.type != "program":
-        return
-    raw = str(a)
-    proc = subprocess.Popen(["gofmt", '-r', '&(*a) -> a'],
-                            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    out, err = proc.communicate(raw.encode())
-    if proc.returncode == 0:
-        return out.decode()
-    else:
-        error("An error occured when formating golang code")
-        error(err.decode().replace("standard input", a.program_name+".go"))
-        if print_raw_if_error:
-            error("Here's the raw code:")
-            for i,l in enumerate(raw.splitlines()):
-                error("{:2d}\t{}".format(i+1, l).expandtabs(2))
-        sys.exit(2)
+class Golang(str):
+    """
+    format go code using gofmt command, may raise FormattingError
+    """
+    def __new__(cls, algo: Algorithm):
+        if not isinstance(algo, Algorithm):
+            raise TypeError("Not an Algorithm instance")
+        cls.filename = algo.program_name + ".go"
+        raw = str(algo)
+        proc = subprocess.Popen(["gofmt", '-r', '&(*a) -> a'],
+                                stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        out, err = proc.communicate(raw.encode())
+        if proc.returncode == 0:
+            return super().__new__(cls, out.decode())
+        else:
+            raise FormattingError(err.decode(), raw)
 
 
 def re_index(lst: list[str], sline: str):
@@ -380,10 +440,45 @@ def re_index(lst: list[str], sline: str):
             return index+1
 
 
+def compile_particle(code: str) -> str:
+    full = """\
+program main
+kamus
+{head}
+algoritma
+{body}
+endprogram
+"""
+    head_mode = any(kwds in code for kwds in list(type_map.keys()) + ["type"])
+    if head_mode:
+        full = full.format(head=code, body="")
+    else:
+        full = full.format(head="", body=code)
+    alg = Algorithm(full)
+    # print(algo)
+    fmtd = Golang(alg)
+    # if fmtd is not None:
+    rgx = r"(?<=import \"fmt\"\n).*(?=func main\(\) {\n)" if head_mode else r"(?<=func main\(\) {\n).*(?=})"
+    res = re.search(rgx, fmtd, re.DOTALL).group()
+    return dedent(res).strip()
+
+
+def auto_compile(raw_algo: str) -> Golang:
+    if "program" in raw_algo:
+        result = Golang(Algorithm.fullparse(raw_algo))
+    elif "procedure" in raw_algo or "function" in raw_algo:
+        bloks = [Golang(Algorithm(sp)) for sp in split_subprograms(raw_algo)]
+        result = '\n'.join([blok for blok in bloks if blok is not None])
+    else:
+        result = compile_particle(raw_algo)
+    return result
+
+
 if __name__ == '__main__':
     import argparse
     # sys.tracebacklimit = 0
     parser = argparse.ArgumentParser()
+    parser.add_argument("--auto", action="store_true")
     parser.add_argument("--run", action="store_true", help="parse, compile, and run the pseudocode")
     parser.add_argument("--raw", action="store_true", help="print unformated golang code")
     parser.add_argument("--print", action="store_true", help="print formated golang code instead writing to file")
@@ -398,6 +493,10 @@ if __name__ == '__main__':
     if not os.path.isdir(args.dir):
         parser.error(f"{args.dir} is not a directory")
 
+    if args.auto:
+        print(auto_compile(args.file.read()), sep='\n')
+        sys.exit(0)
+
     algo = Algorithm.fparse(args.file)
     go_fname = os.path.join(args.dir, f"{algo.program_name}.go")
 
@@ -409,7 +508,7 @@ if __name__ == '__main__':
     if args.raw:
         print(algo)
     else:
-        formated = gofmt(algo, args.print)  # if --print flag supplied and format error happened, print raw
+        formated = Golang(algo)  # formatted
         # --print
         if args.print:
             print(formated)
