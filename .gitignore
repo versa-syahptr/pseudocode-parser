@@ -1,0 +1,15 @@
+.env
+*.pyc
+.venv*
+__pycache__/
+build/
+dist/
+# PyInstaller
+#  PyInstaller creates a build/ directory with temporary files and a dist/ directory with the final executable.
+#  You may want to add these directories to your .gitignore file.
+#  If you are using PyInstaller, you can also ignore the .spec file.
+*.spec
+# Pytest cache
+.cache
+.idea
+*.exe

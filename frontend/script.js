@@ -7,16 +7,16 @@ var pname = "";
 var subtn =document.getElementById('subtn');
 var res_dom = document.getElementById("res");
 
-var toggle = document.getElementById("dark")
+// var toggle = document.getElementById("dark")
 
-window.addEventListener("load", () => {
-    let theme = localStorage.getItem("theme")
-    if (theme === null) {
-        localStorage.setItem("theme", "default")
-    } else {
-        toggle.checked = theme == "material"
-    }
-});
+// window.addEventListener("load", () => {
+//     let theme = localStorage.getItem("theme")
+//     if (theme === null) {
+//         localStorage.setItem("theme", "default")
+//     } else {
+//         toggle.checked = theme == "material"
+//     }
+// });
 
 var editor = CodeMirror.fromTextArea(TB, {
     matchBrackets: true,
@@ -25,23 +25,31 @@ var editor = CodeMirror.fromTextArea(TB, {
     indentWithTabs: true,
     lineNumbers: true,
     autoCloseBrackets: true,
-    theme: localStorage.getItem("theme") || "default",
-    mode: 'algo'
+    theme: "material",
+    mode: 'algo',
+    extraKeys: {
+    "Ctrl-Space": "autocomplete"
+  }
 });
+
+window.addEventListener('resize', () => {
+    editor.refresh();
+});
+
 
 editor.on("change", (cm) => {
     TB.value = cm.getValue(); 
  });
 
 
-toggle.addEventListener("change", (e) => {
-    if (e.target.checked){
-        localStorage.setItem("theme", "material")
-    } else {
-        localStorage.setItem("theme", "default")
-    }
-    editor.setOption("theme", localStorage.getItem("theme"))
-});
+// toggle.addEventListener("change", (e) => {
+//     if (e.target.checked){
+//         localStorage.setItem("theme", "material")
+//     } else {
+//         localStorage.setItem("theme", "default")
+//     }
+//     editor.setOption("theme", localStorage.getItem("theme"))
+// });
 
   
 
@@ -59,8 +67,9 @@ toggle.addEventListener("change", (e) => {
 
 function sendData() {
     // (A) GET FORM DATA
-    if (oldVal != TB.value) {
-        oldVal = TB.value;
+    value = editor.getValue();
+    if (oldVal != value) {
+        oldVal = value;
         subtn.disabled=true;
     } else {
         return false;
@@ -140,7 +149,7 @@ function gorun() {
             "language": "go",
             "stdin": document.getElementById("input").value,
             "files": [{
-                "name": pname + ".go",
+                "name": "main.go",
                 "content": GO
             }]
         },
@@ -172,12 +181,14 @@ function gorun() {
 
 function display(res) {
 // display output from running golang
+    console.log(res)
     document.getElementById("runres").classList.remove("hide")
     var field = document.getElementById("resf")
-    if (res.stdout !== null) {
+    if (res.stdout && res.stdout.trim() !== "") {
         field.innerHTML = res.stdout
-        field.style.color = "black"
-    } else if (res.stderr !== null) {
+        field.style.color = "white"
+    }
+    else if (res.stderr && res.stderr.trim() !== "") {
         field.innerHTML = res.stderr
         field.style.color = "red"
     } else {
@@ -185,4 +196,20 @@ function display(res) {
         field.style.color = "red"
     }
 
+}
+
+function openImageModal() {
+  document.getElementById("imageModal").style.display = "block";
+}
+
+function closeImageModal() {
+  document.getElementById("imageModal").style.display = "none";
+}
+
+// Optional: close when clicking outside image
+window.onclick = function(event) {
+  const modal = document.getElementById("imageModal");
+  if (event.target === modal) {
+    modal.style.display = "none";
+  }
 }

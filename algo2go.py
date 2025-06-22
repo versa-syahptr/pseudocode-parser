@@ -3,7 +3,7 @@
 # algo2go.py
 # Copyright (C) 2022 Versa Syahputra
 # core repo : https://github.com/versa-syahptr/pseudocode-parser
-# web IDE   : https://versa.ptangsana.co.id/algo2go/
+# web IDE   : https://versa.my.id/algo2go/
 
 import os
 import re
@@ -107,8 +107,6 @@ class Algorithm:
     program_name = ""
     type = "program"
     fname = "main"
-    functions = []
-    procedures = []
     template = TEMPLATE
     raw_lines: list[str]
 
@@ -156,11 +154,14 @@ class Algorithm:
         #               ----------- tipe ----------- nama -- parameter ------- return type --
         p = re.search(r"(program|procedure|function) (\w*) ?(?:\((.*)\))?(?:\s*?->\s*?(\w+))?", lines[0])
         if p is None:
-            raise SyntaxError(f"error on this (sub)program\n" + code)
+            raise SyntaxError(f"error on this program or subprogram\n" + code)
         self.type = p.group(1)
         if self.type == "program":
             self.program_name = p.group(2)
             self.fname = "main"
+            # declare subprograms here instead of in class variable
+            self.functions = []
+            self.procedures = []
             self.code_list.append(f"func {self.fname}(){{")
         elif self.type == "function":
             self.fname = p.group(2)
@@ -441,14 +442,14 @@ def re_index(lst: list[str], sline: str):
 
 
 def compile_particle(code: str) -> str:
-    full = """\
-program main
-kamus
-{head}
-algoritma
-{body}
-endprogram
-"""
+    full = dedent("""\
+    program main
+    kamus
+    {head}
+    algoritma
+    {body}
+    endprogram
+    """)
     head_mode = any(kwds in code for kwds in list(type_map.keys()) + ["type"])
     if head_mode:
         full = full.format(head=code, body="")
@@ -459,11 +460,12 @@ endprogram
     fmtd = Golang(alg)
     # if fmtd is not None:
     rgx = r"(?<=import \"fmt\"\n).*(?=func main\(\) {\n)" if head_mode else r"(?<=func main\(\) {\n).*(?=})"
-    res = re.search(rgx, fmtd, re.DOTALL).group()
+    res = re.search(rgx, fmtd, re.DOTALL).group() # type: ignore
     return dedent(res).strip()
 
 
-def auto_compile(raw_algo: str) -> Golang:
+def auto_compile(raw_algo: str) -> Union[str, Golang]:
+    print("using auto_compile")
     if "program" in raw_algo:
         result = Golang(Algorithm.fullparse(raw_algo))
     elif "procedure" in raw_algo or "function" in raw_algo:
@@ -524,3 +526,4 @@ if __name__ == '__main__':
                     os.remove(go_fname)
             else:
                 print(f"file {go_fname} successfully written")
+    

@@ -2,7 +2,7 @@
 Parse pseudocode taught in programming algorithm course Informatics Tel-U. Pseudocode notation will be **translated** to
 **Go language** and then compiled and executed. **Go compiler is required.**
 ## See it in action!
-I've made the web version of **algo2go**, try it here -> https://versa.ptangsana.co.id/algo2go/
+I've made the web version of **algo2go**, try it here -> https://versa.my.id/algo2go/
 ## CLI Usage
 ```shell
 algo2go.py [-h] [--run] [--raw] [--print] [--dump] [-d DIR] file
@@ -26,7 +26,7 @@ Run pseudocode | `algo2go.py --run pseudocode.txt` | `<program-name>.go`
 Run pseudocode and delete go file after run | `algo2go.py --run --dump pseudocode.txt` | None (deleted after run)
 
 ## Syntax
-![](https://versa.ptangsana.co.id/algo2go/cheatsheet.png)
+![](https://versa.my.id/algo2go/cheatsheet.png)
 
 ## Additional Syntax & Rules
 * __Custom Types__ (Tipe Bentukan)
